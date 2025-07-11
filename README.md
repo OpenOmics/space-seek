@@ -7,7 +7,7 @@
   [![tests](https://github.com/OpenOmics/space-seek/workflows/tests/badge.svg)](https://github.com/OpenOmics/space-seek/actions/workflows/main.yaml) [![docs](https://github.com/OpenOmics/space-seek/workflows/docs/badge.svg)](https://github.com/OpenOmics/space-seek/actions/workflows/docs.yml) [![GitHub issues](https://img.shields.io/github/issues/OpenOmics/space-seek?color=brightgreen)](https://github.com/OpenOmics/space-seek/issues)  [![GitHub license](https://img.shields.io/github/license/OpenOmics/space-seek)](https://github.com/OpenOmics/space-seek/blob/main/LICENSE) 
   
   <i>
-    Spatial-sequencing: The final frontier. These are the voyages of the pipeline, `space-seek`. It's long term goals: to explore strange new tissues, to seek out new patterns within single-cellular life, to boldly map the transcriptome of cells-- one space at a time.
+    Spatial-sequencing: The final frontier. These are the voyages of the pipeline, space-seek.<br>It's long term goals: to explore strange new tissues, to seek out new patterns within single-cellular life, to boldly map the transcriptome of cells— one space at a time.
   </i>
 </div>
 
