@@ -3,7 +3,7 @@
 
 # Python standard library
 from __future__ import print_function
-import csv, sys
+import csv, os, sys
 
 # Local imports
 from utils import (
@@ -35,6 +35,24 @@ OPTIONAL_SAMPLE_SHEET_COLUMNS = [
     "loupe_alignment",
     "barcode_csv"
 ]
+# Within the sample sheet, these
+# are the columns that correspond
+# to either files or directories.
+# We need to keep track of these
+# so we can handle them properly
+# when parsing the sample sheet.
+# These are the columns that will
+# be convert to absolute paths and
+# we will check for their existence.
+FILELIKE_SAMPLE_SHEET_COLUMNS = [
+    "fastqs",
+    "cytaimage",
+    "image",
+    "darkimage",
+    "colorizedimage",
+    "loupe_alignment",
+    "barcode_csv"
+]
 
 # Helper functions
 def stripped(s):
@@ -46,6 +64,91 @@ def stripped(s):
         Cleaned string with quotes removed
     """
     return s.strip('"').strip("'").strip()
+
+
+def readable(path):
+    """Check the permissions of a file or a directory to
+    determine if it is readable. For files, it checks
+    if the file exists and is readable. For directories,
+    it checks if the directory exists and is readable
+    and has execute permissions. If the path does not
+    exist or is not readable, it will raise an error.
+    @param path <str>:
+        Path to the file or directory to check permissions for.
+    @return path <str>
+        Returns the path if it is readable, otherwise an
+        error is thrown that will result in a non-zero exit
+        code.
+    """
+    error = False
+    if not os.access(path, os.R_OK):
+        # Check if the path exists and is readable,
+        # if not, raise an error. Both files and
+        # directories need read permissions.
+        err("Error: '{}' does not exist or is not readable!".format(path))
+        error = True
+    if os.path.isdir(path) and not os.access(path, os.X_OK):
+        # Directories need at least read and execute
+        # permissions to be considered readable
+        err("Error: '{}' does not exist or does not have execute permissions!".format(path))
+        error = True
+    if error:
+        # If there were errors, raise a fatal error
+        # and exit the script with a non-zero exit code
+        fatal(
+            "  └── Fatal: Please check/update the permissions and try again!"
+        )
+    return path
+
+
+def normalize_path(path, cwd=None, check_exists=False):
+    """Normalizes a file path to an absolute path. Optionally, a
+    current working directory can be provided to resolve a relative
+    path. If a cwd is provided, the absolute will be resolved from
+    the cwd, otherwise it will be resolved from the current
+    working directory of the script.
+    @param path <str>:
+        Path to normalize, can be relative or absolute. This will
+        be converted to an absolute path and any environment vars
+        will be expanded and ~ will be expanded to the use's home
+        directory.
+    @param cwd <str>:
+        Absolute path to a current working directory to resolve
+        a relative path.
+    @param check_exists <bool>:
+        If True, the function will check if the path exists
+        and raise an error if it does not. This is useful for
+        checking if a file or directory exists before using it.
+    @return path <str>:
+        Normalized absolute path with any environments variables
+        and user's home directory (~) will be expanded.
+    """
+    # Expand user (i.e ~) and environment variables
+    # like $HOME, $SLURM_JOBID, $TMPRDIR, etc.
+    path = os.path.expandvars(os.path.expanduser(path))
+    if cwd is not None:
+        # If a cwd is provided, resolve the path
+        # relative to that specific location
+        if not os.path.isabs(cwd):
+            # Display warning to the user an
+            # absolute path should be passed
+            # to this function if it's not it
+            # will resolve to the current working
+            # directory of the process. This can
+            # lead to unexpected behavior.
+            err(
+                "Warning: The cwd parameter should be an absolute path!",
+                "  └── Using the following current working directory instead: '{0}'.".format(cwd)
+            )
+        path = os.path.join(cwd, path)
+    if not os.path.isabs(path):
+        # Convert to an absolute path
+        # if it is not already absolute
+        path = os.path.abspath(path)
+    if check_exists:
+        # Check if the path is readable
+        path = readable(path)
+    return path
 
 
 def index_file(input_file, key, required_fields, optional_fields, delim=','):
@@ -146,7 +249,7 @@ def index_file(input_file, key, required_fields, optional_fields, delim=','):
     # Check for errors
     if errors:
         fatal(
-            "Fatal: Errors were found while parsing file '{}'! Please fix the errors and try again.".format(input_file)
+            "  └── Fatal: Errors were found while parsing file '{}'! Please fix the errors and try again.".format(input_file)
         )
     return file_idx
 
@@ -155,7 +258,8 @@ def sample_sheet(
         file,
         required_fields=REQUIRED_SAMPLE_SHEET_COLUMNS,
         optional_fields=OPTIONAL_SAMPLE_SHEET_COLUMNS,
-        remap_missing_fields={"id": "sample"}
+        remap_missing_fields={"id": "sample"},
+        filelike_fields=FILELIKE_SAMPLE_SHEET_COLUMNS
     ):
     """Parses a sample sheet file and returns an indexed dictionary.
     The sample sheet must contain a header with the required fields.
@@ -172,7 +276,23 @@ def sample_sheet(
         For example, if the sample sheet does not contain an 'id' field,
         it can be remapped to the 'sample' field which will always be
         present.
+    @param filelike_fields <list[str]>:
+        List of field names that are expected to contain file paths or
+        directories. These fields will be converted to absolute paths and
+        checked for existence.
+    @return parsed_file <dict[sample][required_fields|optional_fields]=str>:
+        Nested dictionary where,
+            • sample = 'sample' column value
+            • value = {required_field_col: "A", optional_field_col: "B"}
+        Given the following CSV file:
+        sample,fastqs,cytaimage,slide,area
+        A,/path/fq1,Img1,S1,A1
+        Returns:
+        {"A":{"fastqs":"/path/fq1","cytaimage":"Img1","slide":"S1","area":"A1"}}
     """
+    if not os.path.isabs(file):
+        # Conver to an absolute path
+        file = os.path.abspath(os.path.expanduser(os.path.expandvars(file)))
     if file.endswith('.tsv') or file.endswith('.txt'):
         # Use tab as delimiter for TSV files
         delim = '\t'
@@ -183,10 +303,8 @@ def sample_sheet(
         # Unsupported file type, not sure what the
         # delimiter is here or what the user is trying
         # to do, so we will raise an error.
-        fatal(
-            "Error: Unsupported file type for sample sheet '{}'. "
-            "Fatal: Please provide a .tsv (tab-seperated) or .csv (comma-seperated) file.".format(file)
-        )
+        err("Error: Unsupported file type for sample sheet '{0}'. ".format(file))
+        fatal("  └── Fatal: Please provide a .tsv (tab-seperated) or .csv (comma-seperated) file and try again!")
     # Parse and index the sample sheet
     parsed_file = index_file(
         file,
@@ -205,6 +323,17 @@ def sample_sheet(
                 # if the 'id' field was not provided or it is
                 # set to an empty string/value.
                 metadata[field] = metadata.get(remap_field, '')
+    # Convert file-like fields to absolute paths
+    for sample, metadata in parsed_file.items():
+        for field in filelike_fields:
+            if field in metadata and metadata.get(field, ''):
+                # Normalize the path to an absolute path
+                # and check if it exists and is readable
+                metadata[field] = normalize_path(
+                    metadata[field],
+                    cwd=os.path.dirname(file),
+                    check_exists=True
+                )
     return parsed_file
 
 
