@@ -12,12 +12,13 @@ from utils import (git_commit_hash,
     fatal,
     which,
     exists,
-    err)
+    err
+)
 
 from . import version as __version__
 
 
-def init(repo_path, output_path, links=[], required=['workflow', 'resources', 'config']):
+def init(repo_path, output_path, links=[], required=['workflow', 'resources', 'config'], images=[], metadata=[]):
     """Initialize the output directory. If user provides a output
     directory path that already exists on the filesystem as a file 
     (small chance of happening but possible), a OSError is raised. If the
@@ -30,28 +31,35 @@ def init(repo_path, output_path, links=[], required=['workflow', 'resources', 'c
         List of files to symlink into output_path
     @param required list[<str>]:
         List of folder to copy over into output_path
+    @param images list[<str>]:
+        List of images to symlink into output_path
+    @param metadata list[<str>]:
+        List of metadata files to symlink into output_path
+    @return inputs list[<str>]:
+        List of renamed input FastQs symlinked into output_path
     """
     if not exists(output_path):
         # Pipeline output directory
         # does not exist on filesystem
         os.makedirs(output_path)
-
     elif exists(output_path) and os.path.isfile(output_path):
         # Provided Path for pipeline 
         # output directory exists as file
         raise OSError("""\n\tFatal: Failed to create provided pipeline output directory!
         User provided --output PATH already exists on the filesystem as a file.
-        Please run {} again with a different --output PATH.
+        Please run {0} again with a different --output PATH.
         """.format(sys.argv[0])
         )
-
     # Copy over templates are other required resources
     copy_safe(source = repo_path, target = output_path, resources = required)
-
     # Create renamed symlinks for each rawdata 
     # file provided as input to the pipeline
-    inputs = sym_safe(input_data = links, target = output_path)
-
+    os.makedirs(os.path.join(output_path, "inputs", "fastqs"), exist_ok=True)
+    os.makedirs(os.path.join(output_path, "inputs", "images"), exist_ok=True)
+    os.makedirs(os.path.join(output_path, "inputs", "metadata"), exist_ok=True)
+    inputs = sym_safe(input_data = links, target = os.path.join(output_path, "inputs", "fastqs"))
+    images = sym_safe(input_data = images, target = os.path.join(output_path, "inputs", "images"), rename_func=os.path.basename)
+    metadata = sym_safe(input_data = metadata, target = os.path.join(output_path, "inputs", "metadata"), rename_func=os.path.basename)
     return inputs
 
 
@@ -74,31 +82,6 @@ def copy_safe(source, target, resources = []):
             copytree(os.path.join(source, resource), destination)
 
 
-def sym_safe(input_data, target):
-    """Creates re-named symlinks for each FastQ file provided
-    as input. If a symlink already exists, it will not try to create a new symlink.
-    If relative source PATH is provided, it will be converted to an absolute PATH.
-    @param input_data <list[<str>]>:
-        List of input files to symlink to target location
-    @param target <str>:
-        Target path to copy templates and required resources
-    @return input_fastqs list[<str>]:
-        List of renamed input FastQs
-    """
-    input_fastqs = [] # store renamed fastq file names
-    for file in input_data:
-        filename = os.path.basename(file)
-        renamed = os.path.join(target, rename(filename))
-        input_fastqs.append(renamed)
-
-        if not exists(renamed):
-            # Create a symlink if it does not already exist
-            # Follow source symlinks to resolve any binding issues
-            os.symlink(os.path.abspath(os.path.realpath(file)), renamed)
-
-    return input_fastqs
-
-
 def rename(filename):
     """Dynamically renames FastQ file to have one of the following extensions: *.R1.fastq.gz, *.R2.fastq.gz
     To automatically rename the fastq files, a few assumptions are made. If the extension of the
@@ -115,17 +98,23 @@ def rename(filename):
         # Matches: _R[12]_fastq.gz, _R[12].fastq.gz, _R[12]_fq.gz, etc.
         ".R1.f(ast)?q.gz$": ".R1.fastq.gz",
         ".R2.f(ast)?q.gz$": ".R2.fastq.gz",
+        ".I1.f(ast)?q.gz$": ".I1.fastq.gz",
+        ".I2.f(ast)?q.gz$": ".I2.fastq.gz",
         # Matches: _R[12]_001_fastq_gz, _R[12].001.fastq.gz, _R[12]_001.fq.gz, etc.
         # Capture lane information as named group
         ".R1.(?P<lane>...).f(ast)?q.gz$": ".R1.fastq.gz",
         ".R2.(?P<lane>...).f(ast)?q.gz$": ".R2.fastq.gz",
+        ".I1.(?P<lane>...).f(ast)?q.gz$": ".I1.fastq.gz",
+        ".I2.(?P<lane>...).f(ast)?q.gz$": ".I2.fastq.gz",
         # Matches: _[12].fastq.gz, _[12].fq.gz, _[12]_fastq_gz, etc.
         "_1.f(ast)?q.gz$": ".R1.fastq.gz",
         "_2.f(ast)?q.gz$": ".R2.fastq.gz"
     }
 
     if (filename.endswith('.R1.fastq.gz') or
-        filename.endswith('.R2.fastq.gz')):
+        filename.endswith('.R2.fastq.gz') or
+        filename.endswith('.I1.fastq.gz') or
+        filename.endswith('.I2.fastq.gz')):
         # Filename is already in the correct format
         return filename
 
@@ -152,6 +141,35 @@ def rename(filename):
         )
 
     return filename
+
+
+def sym_safe(input_data, target, rename_func=rename):
+    """Creates re-named symlinks for each FastQ file provided
+    as input. If a symlink already exists, it will not try to create a new symlink.
+    If relative source PATH is provided, it will be converted to an absolute PATH.
+    @param input_data <list[<str>]>:
+        List of input files to symlink to target location
+    @param target <str>:
+        Target path to copy templates and required resources
+    @param rename_func <function>:
+        Function to rename FastQ files, defaults to rename()
+        function defined in this module; however, if renaming
+        is not needed, this can be set to os.path.basename
+    @return input_fastqs list[<str>]:
+        List of renamed input FastQs
+    """
+    input_fastqs = [] # store renamed fastq file names
+    for file in input_data:
+        filename = os.path.basename(file)
+        renamed = os.path.join(target, rename_func(filename))
+        input_fastqs.append(renamed)
+
+        if not exists(renamed):
+            # Create a symlink if it does not already exist
+            # Follow source symlinks to resolve any binding issues
+            os.symlink(os.path.abspath(os.path.realpath(file)), renamed)
+
+    return input_fastqs
 
 
 def setup(sub_args, ifiles, repo_path, output_path):
@@ -338,7 +356,6 @@ def bind(sub_args, config):
                 value = os.path.dirname(value)
             if value not in bindpaths:
                 bindpaths.append(value)
-
     # Bind input file paths, working
     # directory, and other reference
     # genome paths
@@ -539,8 +556,13 @@ def get_nends(ifiles):
     if paired_end:
         nends = {} # keep count of R1 and R2 for each sample
         for file in ifiles:
-            # Split sample name on file extension
-            sample = re.split('\.R[12]\.fastq\.gz', os.path.basename(file))[0]
+            if file.endswith('.I1.fastq.gz') or file.endswith('.I2.fastq.gz'):
+                continue # Ignore index reads, only R1 and R2 are needed
+            # Split sample name on file extension,
+            # single-cell ATAC some times is delivered
+            # with an R3 file (but not always), adding
+            # support for R3 files just in case
+            sample = re.split('\.R[123]\.fastq\.gz', os.path.basename(file))[0]
             if sample not in nends:
                 nends[sample] = 0
 
