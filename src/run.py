@@ -163,7 +163,22 @@ def sym_safe(input_data, target, rename_func=rename):
         filename = os.path.basename(file)
         renamed = os.path.join(target, rename_func(filename))
         input_fastqs.append(renamed)
-
+        # Get the real path to the file,
+        # this follows any symlinks to
+        # their source
+        real_path = os.path.abspath(os.path.realpath(file))
+        if exists(renamed):
+            # Check to see if the realpath has changed
+            # if so, update the symlink pointer to the
+            # real file.
+            if os.path.abspath(os.path.realpath(renamed)) != real_path:
+                # Need to update the symlink
+                # the pointer to the orginial
+                # file has changed.
+                try: os.unlink(renamed)
+                except PermissionError:
+                    err("Warning: Failed to create a new symlink for the following updated input file:")
+                    err("  └── '{0}' -> '{1}'".format(renamed, real_path))
         if not exists(renamed):
             # Create a symlink if it does not already exist
             # Follow source symlinks to resolve any binding issues
@@ -361,10 +376,10 @@ def bind(sub_args, config):
     # genome paths
     rawdata_bind_paths = [os.path.realpath(p) for p in config['project']['datapath'].split(',')]
     working_directory =  os.path.realpath(config['project']['workpath'])
-    genome_bind_paths = resolve_additional_bind_paths(bindpaths)
-    bindpaths = [working_directory] + rawdata_bind_paths +  genome_bind_paths
+    bindpaths = resolve_additional_bind_paths(
+        [working_directory] + rawdata_bind_paths + bindpaths
+    )
     bindpaths = list(set([p for p in bindpaths if p != os.sep]))
-
     return bindpaths
 
 
@@ -421,7 +436,7 @@ def add_user_information(config):
 
     # Update config with home directory and 
     # username
-    config['project']['userhome'] = home
+    # config['project']['userhome'] = home
     config['project']['username'] = username
 
     return config
