@@ -14,7 +14,7 @@
             "probeset": {
                 "visium_hd": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2024-A/Visium_Human_Transcriptome_Probe_Set_v2.0_GRCh38-2020-A.csv",
                 "visium_hd_3_prime": "",
-                "visium_cytassist": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2024-A/Visium_Human_Transcriptome_Probe_Set_v2.0_GRCh38-2020-A.cs",
+                "visium_cytassist": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2024-A/Visium_Human_Transcriptome_Probe_Set_v2.0_GRCh38-2020-A.csv",
                 "visium_ff": ""
             }
         },
