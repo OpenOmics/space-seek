@@ -1,4 +1,40 @@
 {
     "references": {
+        "hg38_2024": {
+            "gex_transcriptome": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2024-A",
+            "probeset": {
+                "visium_hd": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2024-A/Visium_Human_Transcriptome_Probe_Set_v2.1.0_GRCh38-2024-A.csv",
+                "visium_hd_3_prime": "",
+                "visium_cytassist": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2024-A/Visium_Human_Transcriptome_Probe_Set_v2.1.0_GRCh38-2024-A.csv",
+                "visium_ff": ""
+            }
+        },
+        "hg38_2020": {
+            "gex_transcriptome": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2020-A",
+            "probeset": {
+                "visium_hd": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2024-A/Visium_Human_Transcriptome_Probe_Set_v2.0_GRCh38-2020-A.csv",
+                "visium_hd_3_prime": "",
+                "visium_cytassist": "/data/OpenOmics/references/space-seek/refdata-gex-GRCh38-2024-A/Visium_Human_Transcriptome_Probe_Set_v2.0_GRCh38-2020-A.cs",
+                "visium_ff": ""
+            }
+        },
+        "mm39_2024": {
+            "gex_transcriptome": "/data/OpenOmics/references/space-seek/refdata-gex-GRCm39-2024-A",
+            "probeset": {
+                "visium_hd": "/data/OpenOmics/references/space-seek/refdata-gex-GRCm39-2024-A/Visium_Mouse_Transcriptome_Probe_Set_v2.1.0_GRCm39-2024-A.csv",
+                "visium_hd_3_prime": "",
+                "visium_cytassist": "",
+                "visium_ff": ""
+            }
+        },
+        "mm10_2020": {
+            "gex_transcriptome": "/data/OpenOmics/references/space-seek/refdata-gex-mm10-2020-A",
+            "probeset": {
+                "visium_hd": "/data/OpenOmics/references/space-seek/refdata-gex-mm10-2020-A/Visium_Mouse_Transcriptome_Probe_Set_v2.0_mm10-2020-A.csv",
+                "visium_hd_3_prime": "",
+                "visium_cytassist": "/data/OpenOmics/references/space-seek/refdata-gex-mm10-2020-A/Visium_Mouse_Transcriptome_Probe_Set_v1.0_mm10-2020-A.csv",
+                "visium_ff": ""
+            }
+        }
     }
 }
