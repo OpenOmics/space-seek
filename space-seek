@@ -100,6 +100,20 @@ def run(sub_args):
     # The pipelines has only two requirements:
     # snakemake and singularity 
     require(['snakemake', 'singularity'], ['snakemake', 'singularity'])
+    # Check that there is a probeset for the
+    # provided reference genome and assay.
+    # Currently, there is no probeset for
+    # mm39 and the visium_cytassist assay.
+    INCOMPATIABLE_GENOME_ASSAY_COMBINATIONS = [
+        ('mm39_2024', 'visium_cytassist'),
+    ]
+    if (sub_args.genome, sub_args.assay) in INCOMPATIABLE_GENOME_ASSAY_COMBINATIONS:
+        # Incompatiable genome and assay combination
+        # there are no probe sets available for this
+        # this reference genome and assay combination.
+        err('Error: Incompatible --genome and --assay combination!')
+        err('  └── No probe set is available for the "{0}" reference genome and the "{1}" assay.'.format(sub_args.genome, sub_args.assay))
+        fatal('  └── Please select a different genome or assay and try again.')
     # Parse the sample sheet and check for
     # required columns and files.
     sample_metadata = sample_sheet(sub_args.sample_sheet)
@@ -272,7 +286,9 @@ def parsed_arguments(name, description):
                 [--silent] [--threads THREADS] [--tmp-dir TMP_DIR] \\
                 --input INPUT [INPUT ...] \\
                 --output OUTPUT \\
-                --sample-sheet SAMPLE_SHEET
+                --sample-sheet SAMPLE_SHEET \\
+                --genome {{hg38_2024,hg38_2020,mm39_2024,mm10_2020}} \\
+                --assay {{visium_hd,visium_hd_3_prime,visium_cytassist,visium_ff}}
 
         Optional arguments are shown in square brackets above.
 
@@ -320,30 +336,56 @@ def parsed_arguments(name, description):
                                   • image: This is an optional field to specify the path
                                     to a brightfield microscope image in either TIFF, 
                                     QPTIFF, BTF, or JPEG format.
-                                  • darkimage: This is an optional field to specify the path
-                                    to a a dark background fluorescence microscope image in
+                                  • darkimage: This is an optional field to specify the 
+                                    path to a a dark background fluorescence microscope
+                                    image in either TIFF, QPTIFF, BTF, or JPEG format.
+                                  • colorizedimage: This is an optional field to specify
+                                    the path to a composite colored fluorescence image in
                                     either TIFF, QPTIFF, BTF, or JPEG format.
-                                  • colorizedimage: This is an optional field to specify the
-                                    path to a composite colored fluorescence image in either
-                                    TIFF, QPTIFF, BTF, or JPEG format.
                                   • loupe_alignment: This is an optional field to specify
-                                    the path to a Loupe alignment file in JSON format. This
-                                    file is produced by the Loupe Browser after manual re-
-                                    alignment is performed.
+                                    the path to a Loupe alignment file in JSON format.
+                                    This file is produced by the Loupe Browser after
+                                    manual re-alignment is performed.
                                   • barcode_csv: This is an optional field to specify the
-                                    path to a CSV file containing barcode information. This
-                                    file is used to map barcodes to sample names. This is
-                                    useful for when multiple samples were pooled on the same
-                                    slide. This file should contain two columns, 'Barcode'
-                                    and 'sample'.
+                                    path to a CSV file containing barcode information.
+                                    This file is used to map barcodes to sample names.
+                                    This is useful for when multiple samples were pooled
+                                    on the same slide. This file should contain two
+                                    columns: 'Barcode' and 'sample'.
                                   Example: --sample-sheet .tests/sample_sheet.csv
+          --genome {{hg38_2024,hg38_2020,mm39_2024,mm10_2020}}
+                                Reference genome. This option defines the reference genome
+                                of the samples to use for alignment and quantification. 
+                                The {2} pipeline comes does comes bundled with
+                                pre-built reference files for human and mouse samples.
+                                  Example: --genome hg38_2024
+          --assay {{visium_hd,visium_hd_3_prime,visium_cytassist,visium_ff}}
+                                Name of the 10x assay. This is used to automatically select
+                                the appropriate probe set based on the selected reference
+                                genome. Here is an overview of each assay:
+                                  • visium_hd: 10x Visium HD assay for fresh frozen,
+                                    FFPE, and fixed frozen tissue samples. This assay
+                                    relies on a whole transcriptome probe set targeting
+                                    protein-coding genes.
+                                  • visium_hd_3_prime: 10x Visium HD assay for fresh
+                                    frozen tissue samples. This assay relies on poly-A
+                                    selection to provide an unbiased look at the whole
+                                    transcriptome.
+                                  • visium_cytassist: 10x Visium CytAssist assay for
+                                    fresh frozen, FFPE, and fixed frozen tissue samples.
+                                    This assay relies on a whole transcriptome probe set
+                                    targeting protein-coding genes.
+                                  • visium_ff: 10x Visium assay for fresh froze tissue
+                                    samples. This assay relies on poly-A selection to
+                                    provides unbiased look at the whole transcriptome.
+                                  Example: --assay visium_hd
 
         {3}{4}Analysis options:{5}
-          --create-bam          Create bam files. By default, the pipeline will NOT create any
-                                BAM files. This is to reduce the size of the output directory.
-                                If this flag is provided, a BAM file will be created and saved
-                                for each sample during runtime. Please use this flag to ensure
-                                that a bam file is created.
+          --create-bam          Create bam files. By default, the pipeline will not create
+                                any BAM files. This is to reduce the size of the output
+                                directory. If this flag is provided, a BAM file will be
+                                created and saved for each sample during runtime. Please
+                                use this flag to ensure that a bam file is created.
                                   Example: --create-bam
         {3}{4}Orchestration options:{5}
           --mode {{slurm,local}}  
@@ -429,9 +471,11 @@ def parsed_arguments(name, description):
           module load singularity snakemake
 
           # Step 2A.) Dry-run the pipeline
-          ./{0} run --input .tests/*.R?.fastq.gz \\
-                         --output /data/$USER/output \\
+          ./{0} run --input .tests/fastqs/*/*.gz \\
+                         --output space_output \\
                          --sample-sheet .tests/sample_sheet.csv \\
+                         --genome hg38_2024 \\
+                         --assay visium_hd \\
                          --mode slurm \\
                          --dry-run
 
@@ -439,9 +483,11 @@ def parsed_arguments(name, description):
           # The slurm mode will submit jobs to 
           # the cluster. It is recommended running 
           # the pipeline in this mode.
-          ./{0} run --input .tests/*.R?.fastq.gz \\
+          ./{0} run --input .tests/fastqs/*/*.gz \\
+                         --output space_output \\
                          --sample-sheet .tests/sample_sheet.csv \\
-                         --output /data/$USER/output \\
+                         --genome hg38_2024 \\
+                         --assay visium_hd \\
                          --mode slurm
 
         {2}{3}Version:{4}
@@ -487,6 +533,24 @@ def parsed_arguments(name, description):
         # Check if the file exists and if it is readable
         type = lambda file: permissions(parser, file, os.R_OK),
         required = True,
+        help = argparse.SUPPRESS
+    )
+
+    # Name of the reference genome
+    subparser_run.add_argument(
+        '--genome',
+        type = str,
+        required = True,
+        choices = ['hg38_2024', 'hg38_2020', 'mm39_2024', 'mm10_2020'],
+        help = argparse.SUPPRESS
+    )
+
+    # Name of the 10x assay
+    subparser_run.add_argument(
+        '--assay',
+        type = str,
+        required = True,
+        choices = ['visium_hd', 'visium_hd_3_prime', 'visium_cytassist', 'visium_ff'],
         help = argparse.SUPPRESS
     )
 
@@ -619,7 +683,7 @@ def parsed_arguments(name, description):
                                 working directory. Please verify that the 
                                 pipeline is not running before running 
                                 this command.
-                                  Example: --output /data/$USER/output
+                                  Example: --output space_output
 
         {3}{4}Misc Options:{5}
           -h, --help            Show usage information, help message, 
@@ -631,7 +695,7 @@ def parsed_arguments(name, description):
     unlock_epilog = textwrap.dedent("""\
         {2}{3}Example:{4}
           # Unlock output directory of pipeline
-          {0} unlock --output /data/$USER/output
+          {0} unlock --output space_output
 
         {2}{3}Version:{4}
           {1}
