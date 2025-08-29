@@ -1,27 +1,54 @@
 # Python standard library
 from os.path import join
-from os import listdir
-import os, sys, json
-
+import os, json
 # 3rd party imports from pypi
-from snakemake.workflow import workflow as wf_api
-from snakemake.utils import R
-
+from snakemake.io import expand
 # Local imports
 from scripts.common import (
     allocated,
-    provided, 
-    references,
+    provided,
     str_bool
 )
 
 
-# Final ouput files of the pipeline
+# Global workflow variables
+configfile: 'config.json'                     # Generated from user input and config/*.json
+bindpath     = config['bindpaths']            # Singularity paths to bind to the container
+workpath     = config['project']['workpath']  # Pipeline's output directory
+tmpdir       = config['options']['tmp_dir']   # Temporary directory
+sample_sheet = config['sample_sheet']         # Sample sheet contain input files and metdata
+samples      = sorted(
+    set(list(sample_sheet.keys()))            # Base name of input samples from sample sheet
+)
+# Workflow options 
+assay  = config['options']['assay']    # Visium assay: visium_hd, visium_hd_3_prime, ...
+genome = config['options']['genome']   # Reference genome: hg38_2024, mm39_2024, ...
+refs   = config['references'][genome]  # Contains transcriptome and probset refs
+create_bams = str_bool(                # Create BAM files during Spaceranger counts,
+    config['options']['create_bam']    # default: False
+)
+
+# Read in resource information,
+# containing information about
+# threads, mem, walltimes, etc.
+# TODO: Add handler for when the
+# mode is set to local.
+with open(join(workpath, 'config', 'cluster.json')) as fh:
+    cluster = json.load(fh)
+
+
+# Final output files of the pipeline,
+# TODO: Use id column for output files,
+# this represents renamed samples.
 rule all:
     input:
-        []
+        # Spaceranger web summaries,
+        # @imported from rules/gex.smk
+        # @output of rule spaceranger_count
+        expand(join(workpath, "{sample}", "outs", "web_summary.html"), sample=samples),
 
 
-# Import rules 
+# Import rules
+include: join("rules", "gex.smk")
 include: join("rules", "common.smk")
 include: join("rules", "hooks.smk")
