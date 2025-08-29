@@ -156,6 +156,19 @@ def run(sub_args):
         output_path = sub_args.output
     )
 
+    # Check if there are fastq files for all
+    # samples in the sample sheet
+    samples_in_sample_sheet = sample_metadata.keys()
+    samples_with_fastq_files = config['samples']
+    samples_with_missing_fastqs = set(samples_in_sample_sheet) - set(samples_with_fastq_files)
+    if samples_with_missing_fastqs:
+        err('Error: Missing FastQ files for the following samples:')
+        err('  └── {0}'.format(samples_with_fastq_files))
+        err('  └── Please if these FastQ files were provided to the --input option.')
+        err('      This could also be caused by a typo in the sample sheet. Please')
+        err('      check the first column of the sample sheet. It should contain the')
+        fatal('      the basename of the FastQ file without the FastQ extension.')
+
     # Add sample sheet to config
     config['sample_sheet'] = sample_metadata
 
