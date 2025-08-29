@@ -1,4 +1,5 @@
 {
     "images": {
+        "spaceranger_v4.0.1": "docker://skchronicles/spaceranger:v0.1.0"
     }
 }
