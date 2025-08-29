@@ -463,8 +463,9 @@ def add_sample_metadata(input_files, config, group=None):
     config['samples'] = []
     for file in input_files:
         # Split sample name on file extension
-        sample = re.split('\.R[12]\.fastq\.gz', os.path.basename(file))[0]
-        if sample not in added:
+        file_basename = os.path.basename(file)
+        sample = re.split('(?:.L[0-9]{3})?\.R[12]\.fastq\.gz', file_basename)[0]
+        if sample not in added and sample != file_basename:
             # Only add PE sample information once
             added.append(sample)
             config['samples'].append(sample)
