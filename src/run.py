@@ -128,7 +128,7 @@ def rename(filename):
             break # only rename once
 
     if not converted:
-        raise NameError("""\n\tFatal: Failed to rename provided input '{}'!
+        fatal("""\n\tFatal: Failed to rename provided input '{0}'!
         Cannot determine the extension of the user provided input file.
         Please rename the file list above before trying again.
         Here is example of acceptable input file extensions:
@@ -137,7 +137,7 @@ def rename(filename):
           sampleName_1.fastq.gz       sampleName_2.fastq.gz
         Please also check that your input files are gzipped?
         If they are not, please gzip them before proceeding again.
-        """.format(filename, sys.argv[0])
+        """.format(filename)
         )
 
     return filename
@@ -464,7 +464,9 @@ def add_sample_metadata(input_files, config, group=None):
     for file in input_files:
         # Split sample name on file extension
         file_basename = os.path.basename(file)
-        sample = re.split('(?:.L[0-9]{3})?\.R[12]\.fastq\.gz', file_basename)[0]
+        # Regex101 link: https://regex101.com/r/3AOcOE/1
+        # Remove suffix from renamed sample
+        sample = re.split('(?:.S\d+)?(?:.L[0-9]{3})?\.R[12]\.fastq\.gz', file_basename)[0]
         if sample not in added and sample != file_basename:
             # Only add PE sample information once
             added.append(sample)
