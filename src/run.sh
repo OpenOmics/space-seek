@@ -192,7 +192,7 @@ function submit(){
           # --keep-remote --restart-times 3 -j 500 --use-singularity
           # --singularity-args -B {}.format({bindpaths}) --local-cores 24
           SLURM_DIR="$3/logfiles/slurmfiles"
-          CLUSTER_OPTS="sbatch --gres {resources.gres} --cpus-per-task {threads} -t {resources.time} --mem {resources.mem} --job-name={params.rname} -e $SLURM_DIR/slurm-%j_{params.rname}.out -o $SLURM_DIR/slurm-%j_{params.rname}.out"
+          CLUSTER_OPTS="sbatch --gres {resources.gres} --cpus-per-task {threads} -t {resources.time} --mem {resources.mem} --job-name={rule} -e $SLURM_DIR/slurm-%j_{rule}.out -o $SLURM_DIR/slurm-%j_{rule}.out"
           # Check if NOT running on Biowulf
           # Assumes other clusters do NOT
           # have GRES for local node disk,
@@ -207,7 +207,7 @@ function submit(){
           # SLURM is not configured to use
           # GRES, remove prefix single quote
           if [[ ${6#\'} != /lscratch* ]]; then
-            CLUSTER_OPTS="sbatch --cpus-per-task {threads} -t {resources.time} --mem {resources.mem} --job-name={params.rname} -e $SLURM_DIR/slurm-%j_{params.rname}.out -o $SLURM_DIR/slurm-%j_{params.rname}.out"
+            CLUSTER_OPTS="sbatch --cpus-per-task {threads} -t {resources.time} --mem {resources.mem} --job-name={rule} -e $SLURM_DIR/slurm-%j_{rule}.out -o $SLURM_DIR/slurm-%j_{rule}.out"
           fi
           # Create sbacth script to build index
     cat << EOF > kickoff.sh
