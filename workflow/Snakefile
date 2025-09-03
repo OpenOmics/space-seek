@@ -17,9 +17,9 @@ bindpath     = config['bindpaths']            # Singularity paths to bind to the
 workpath     = config['project']['workpath']  # Pipeline's output directory
 tmpdir       = config['options']['tmp_dir']   # Temporary directory
 sample_sheet = config['sample_sheet']         # Sample sheet contain input files and metdata
-samples      = sorted(
-    set(list(sample_sheet.keys()))            # Base name of input samples from sample sheet
-)
+samples      = sorted(                        # Sample IDs in sample sheet which is being
+    set(list(sample_sheet.keys()))            # used to rename samples and output files
+)                                             # If id was not in sample sheet, defaults to sample
 # Workflow options 
 assay  = config['options']['assay']    # Visium assay: visium_hd, visium_hd_3_prime, ...
 genome = config['options']['genome']   # Reference genome: hg38_2024, mm39_2024, ...

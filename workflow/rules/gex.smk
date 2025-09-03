@@ -18,21 +18,19 @@ rule spaceranger_count:
         None, (scatter-per-sample)
     @Output:
         Web summary interactive HTML report,
-        Web summary CSV file,
-
+        Web summary CSV file
     """
     output:
         html = join(workpath, "{sample}", "outs", "web_summary.html"),
         csv  = join(workpath, "{sample}", "outs", "metrics_summary.csv"),
     params:
         # Required columns in sample sheet
-        sample_name = "{sample}",
-        # If id is not provided, it defaults to sample
-        sample_id = lambda w: sample_sheet[w.sample]["id"],
-        fastqs    = lambda w: sample_sheet[w.sample]["fastqs"],
-        cytaimage = lambda w: sample_sheet[w.sample]["cytaimage"],
-        slide     = lambda w: sample_sheet[w.sample]["slide"],
-        area      = lambda w: sample_sheet[w.sample]["area"],
+        sample_id   = "{sample}",   # If id was not provided, it defaulted to sample
+        sample_name = lambda w: sample_sheet[w.sample]["sample"],
+        fastqs      = lambda w: sample_sheet[w.sample]["fastqs"],
+        cytaimage   = lambda w: sample_sheet[w.sample]["cytaimage"],
+        slide       = lambda w: sample_sheet[w.sample]["slide"],
+        area        = lambda w: sample_sheet[w.sample]["area"],
         # Other options
         # Optionally create BAM files
         create_bam    = lambda _: "true" if create_bams else "false",
@@ -75,6 +73,7 @@ rule spaceranger_count:
 
     # Run spaceranger count
     spaceranger count {params.probeset_option} \\
+        --id={params.sample_id} \\
         --sample={params.sample_name} \\
         --fastqs={params.fastqs} \\
         --transcriptome={params.transcriptome} \\
