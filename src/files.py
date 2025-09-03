@@ -151,11 +151,11 @@ def normalize_path(path, cwd=None, check_exists=False):
     return path
 
 
-def index_file(input_file, key, required_fields, optional_fields, delim=','):
+def index_file(input_file, key, backup_key, required_fields, optional_fields, delim=','):
     """Parses and indexes a file into a dictionary for quick
     lookups later. The file will be indexed as a nested dictionary
-    where key is the first key and the second keys are the required
-    and optional fields. 
+    where key is the first key (i.e id) and the second keys are the
+    required and optional fields. 
     For example, if the file, sample_sheet.csv, contains the following:
     sample,fastqs,cytaimage,slide,area,image,id
     A,/path/to/fastq1,cytaimage1,slide1,area1,,
@@ -170,14 +170,16 @@ def index_file(input_file, key, required_fields, optional_fields, delim=','):
             "slide": "slide1",
             "area": "area1",
             "image": "",
-            "id": ""
+            "sample": "A",
+            "id": "A"
         },
-        "B": {
+        "IDB": {
             "fastqs": "/path/to/fastq2",
             "cytaimage": "cytaimage2",
             "slide": "slide2",
             "area": "area2",
             "image": "image2",
+            "sammple": "B",
             "id": "IDB"
         }
     }
@@ -187,6 +189,11 @@ def index_file(input_file, key, required_fields, optional_fields, delim=','):
         these columns will be automatically resolved.  
     @param key <str>:
         Column name of the first key to index the file by.
+        This should be set to the "id" column.
+    @param backup_key <str>:
+        Column name of the backup key to use if the primary
+        key is not present or is empty. This should be set
+        to the "sample" column.
     @param required_fields <list[str]>:
         List of required column names that will be used as
         the second key to index the file. The values of these
@@ -202,7 +209,7 @@ def index_file(input_file, key, required_fields, optional_fields, delim=','):
         Default is a comma (',').
     @return file_idx <dict[key][required_fields|optional_fields]=str>:
         Nested dictionary where,
-            • key = 'key' column value
+            • key = 'key' column value, if dne uses the backup_key value
             • value = {required_field_col: "A", optional_field_col: "B"}
         Given,
             key="A", required_fields=["C","D"]
@@ -220,7 +227,15 @@ def index_file(input_file, key, required_fields, optional_fields, delim=','):
         for parsed_line in file:
             line_number += 1
             # Add first key to file_idx
-            _k1 = stripped(parsed_line[key])
+            _k1 = stripped(parsed_line.get(key, ''))
+            if not _k1:
+                # Use backup_key if key is empty,
+                # we are indexing by 'id' but
+                # if 'id' is empty we will use
+                # the 'sample' column instead,
+                # 'sample' should always be
+                # present and not empty
+                _k1 = stripped(parsed_line[backup_key])
             if _k1 not in file_idx:
                 file_idx[_k1] = {}
             # Check for required fields
@@ -308,6 +323,7 @@ def sample_sheet(
     # Parse and index the sample sheet
     parsed_file = index_file(
         file,
+        "id",
         "sample",
         required_fields,
         optional_fields,
