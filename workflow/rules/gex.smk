@@ -55,19 +55,20 @@ rule spaceranger_count:
         # fluorescence image
         color_image_option = lambda w: "--colorizedimage={0}".format(sample_sheet[w.sample]['colorizedimage']) \
             if sample_sheet[w.sample]['colorizedimage'] else "",
+        # Temporary directory
+        tmpdir = tmpdir,
     resources:
         mem    = allocated("mem",  "spaceranger_count", cluster),
         time   = allocated("time", "spaceranger_count", cluster),
         gres   = allocated("gres", "spaceranger_count", cluster),
-        tmpdir = tmpdir,
     threads: int(allocated("threads", "spaceranger_count", cluster)),
     container: config["images"]["spaceranger_v4.0.1"],
     shell: """
     # Setups temporary directory for
     # intermediate files with built-in
     # mechanism for deletion on exit
-    if [ ! -d "{resources.tmpdir}" ]; then mkdir -p "{resources.tmpdir}"; fi
-    tmp=$(mktemp -d -p "{resources.tmpdir}")
+    if [ ! -d "{params.tmpdir}" ]; then mkdir -p "{params.tmpdir}"; fi
+    tmp="$(mktemp -d -p "{params.tmpdir}")"
     trap 'rm -rf "${{tmp}}"' EXIT
     export TMPDIR="${{tmp}}"
 
