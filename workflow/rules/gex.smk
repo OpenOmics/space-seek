@@ -57,6 +57,8 @@ rule spaceranger_count:
             if sample_sheet[w.sample]['colorizedimage'] else "",
         # Temporary directory
         tmpdir = tmpdir,
+        # Output directory
+        outdir = join(workpath, "{sample}"),
     resources:
         mem    = allocated("mem",  "spaceranger_count", cluster),
         time   = allocated("time", "spaceranger_count", cluster),
@@ -71,6 +73,12 @@ rule spaceranger_count:
     tmp="$(mktemp -d -p "{params.tmpdir}")"
     trap 'rm -rf "${{tmp}}"' EXIT
     export TMPDIR="${{tmp}}"
+
+    # Delete previous attempts output
+    # directory if it exists
+    if [ -d "{params.outdir}" ]; then
+        rm -rf "{params.outdir}"
+    fi
 
     # Run spaceranger count
     spaceranger count {params.probeset_option} \\
